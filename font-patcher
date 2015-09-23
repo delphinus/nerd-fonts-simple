@@ -307,7 +307,7 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
               x_ratio = 1.0
               y_ratio = 1.0
               x_diff = 0
-              y_diff = 0
+              y_diff = -55
             else:
               print '{0:X}'.format(sourceFontStart)
 
