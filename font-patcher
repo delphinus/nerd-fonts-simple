@@ -289,25 +289,25 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
               x_diff = 0
               y_diff = -80
             elif sourceFontStart == sourceFontOriginalStart:
-              x_ratio = 1.0
-              y_ratio = 1.0
-              x_diff = 0
-              y_diff = -100
+              x_ratio = 0.9
+              y_ratio = 0.9
+              x_diff = 50
+              y_diff = -50
             elif sourceFontStart == sourceFontDeviconsStart:
-              x_ratio = 1.3
-              y_ratio = 1.3
+              x_ratio = 1.1
+              y_ratio = 1.1
               x_diff = -150
-              y_diff = -330
+              y_diff = -180
             elif sourceFontStart == sourceFontFontAwesomeStart:
               x_ratio = 1.0
               y_ratio = 1.0
               x_diff = 0
               y_diff = 0
             elif sourceFontStart == sourceFontOcticonsStart:
-              x_ratio = 1.1
-              y_ratio = 1.1
+              x_ratio = 1.0
+              y_ratio = 1.0
               x_diff = 0
-              y_diff = -100
+              y_diff = 0
             else:
               print '{0:X}'.format(sourceFontStart)
 
