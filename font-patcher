@@ -72,10 +72,9 @@ if args.pomicons:
 sourceFont = fontforge.open(args.font)
 
 fontname, style = re.match("^([^-]*)(?:(-.*))?$", sourceFont.fontname).groups()
-familyname = sourceFont.familyname + additionalFontNameSuffix
+familyname = sourceFont.familyname
 # fullname (filename) can always use long/verbose font name, even in windows
-fullname = sourceFont.fullname + verboseAdditionalFontNameSuffix
-fontname = fontname + additionalFontNameSuffix.replace(" ", "")
+fullname = sourceFont.fullname
 
 if args.windows:
     maxLength = 31
@@ -95,14 +94,8 @@ def replace_all(text, dic):
         text = text.replace(i, j)
     return text
 
-# comply with SIL Open Font License (OFL)
-reservedFontNameReplacements = { 'source': 'sauce', 'Source': 'Sauce', 'hermit': 'hurmit', 'Hermit': 'Hurmit', 'fira': 'fura', 'Fira': 'Fura', 'hack': 'knack', 'Hack': 'Knack' }
-
 projectInfo = "Patched with 'Nerd Fonts Patcher' (https://github.com/ryanoasis/nerd-fonts)"
 
-sourceFont.familyname = replace_all(familyname, reservedFontNameReplacements)
-sourceFont.fullname = replace_all(fullname, reservedFontNameReplacements)
-sourceFont.fontname = replace_all(fontname, reservedFontNameReplacements)
 sourceFont.appendSFNTName('English (US)', 'Preferred Family', sourceFont.familyname)
 sourceFont.appendSFNTName('English (US)', 'Compatible Full', sourceFont.fullname)
 sourceFont.comment = projectInfo
@@ -285,6 +278,43 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
             # Prepare symbol glyph dimensions
             sym_dim = get_dim(sym_glyph)
 
+            if sourceFontStart == sourceFontPomiconsStart:
+              x_ratio = 1.1
+              y_ratio = 1.1
+              x_diff = 0
+              y_diff = -100
+            elif sourceFontStart in [symbolsPowerlineRange1Start, symbolsPowerlineRange2Start]:
+              x_ratio = 0.96
+              y_ratio = 0.92
+              x_diff = 0
+              y_diff = -80
+            elif sourceFontStart == sourceFontOriginalStart:
+              x_ratio = 1.0
+              y_ratio = 1.0
+              x_diff = 0
+              y_diff = -100
+            elif sourceFontStart == sourceFontDeviconsStart:
+              x_ratio = 1.3
+              y_ratio = 1.3
+              x_diff = -150
+              y_diff = -330
+            elif sourceFontStart == sourceFontFontAwesomeStart:
+              x_ratio = 1.0
+              y_ratio = 1.0
+              x_diff = 0
+              y_diff = 0
+            elif sourceFontStart == sourceFontOcticonsStart:
+              x_ratio = 1.1
+              y_ratio = 1.1
+              x_diff = 0
+              y_diff = -100
+            else:
+              print '{0:X}'.format(sourceFontStart)
+
+            scale = psMat.scale(x_ratio, y_ratio)
+            translate = psMat.translate(x_diff, y_diff)
+            transform = psMat.compose(scale, translate)
+
             # Select and copy symbol from its encoding point
             symbolFont.selection.select(sym_glyph.encoding)
             symbolFont.copy()
@@ -292,6 +322,8 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
             # Select and paste symbol to its unicode code point
             sourceFont.selection.select(currentSourceFontGlyph)
             sourceFont.paste()
+
+            sourceFont.transform(transform)
 
             if args.single:
                 # Now that we have copy/pasted the glyph, it's time to scale and move it
@@ -372,8 +404,8 @@ copy_glyphs(sourceFont, sourceFontOriginalStart, sourceFontOriginalEnd, symbols,
 copy_glyphs(sourceFont, sourceFontDeviconsStart, sourceFontDeviconsEnd, symbolsDevicons, symbolsDeviconsRangeStart, symbolsDeviconsRangeEnd)
 
 if args.powerline:
-    copy_glyphs(sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End, sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End)
-    copy_glyphs(sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End, sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End)
+    copy_glyphs(sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End, powerlineSymbols, symbolsPowerlineRange1Start, symbolsPowerlineRange1End)
+    copy_glyphs(sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End, powerlineSymbols, symbolsPowerlineRange2Start, symbolsPowerlineRange2End)
 
 
 if args.fontawesome:
