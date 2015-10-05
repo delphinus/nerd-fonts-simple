@@ -285,9 +285,9 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
               y_diff = -100
             elif sourceFontStart in [symbolsPowerlineRange1Start, symbolsPowerlineRange2Start]:
               x_ratio = 0.96
-              y_ratio = 0.92
+              y_ratio = 0.88
               x_diff = 0
-              y_diff = -80
+              y_diff = -40
             elif sourceFontStart == sourceFontOriginalStart:
               x_ratio = 0.9
               y_ratio = 0.9
