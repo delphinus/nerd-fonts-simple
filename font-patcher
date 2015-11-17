@@ -1,11 +1,13 @@
 #!/usr/bin/env python2
-# version: 0.5.0
+# coding=utf8
+# version: 0.6.0
 
 import sys
 import psMat
 import re
-import os.path
+import os
 import argparse
+import errno
 
 try:
 	#Load the module
@@ -25,18 +27,22 @@ parser.add_argument('-w', '--windows', '--limit-font-name-length', dest='windows
 parser.add_argument('--fontawesome', dest='fontawesome', action='store_true', help='Add Font Awesome Glyphs (http://fortawesome.github.io/Font-Awesome/)', default=False)
 parser.add_argument('--octicons', dest='octicons', action='store_true', help='Add Octicons Glyphs (https://octicons.github.com/)', default=False)
 parser.add_argument('--pomicons', dest='pomicons', action='store_true', help='Add Pomicon Glyphs (https://github.com/gabrielelana/pomicons)', default=False)
-parser.add_argument('--powerline', dest='powerline', action='store_true', help='Add Powerline Glyphs (https://github.com/ryanoasis/powerline-extra-symbols)', default=False)
+parser.add_argument('--powerline', dest='powerline', action='store_true', help='Add Powerline Glyphs', default=False)
+parser.add_argument('--powerlineextra', dest='powerlineextra', action='store_true', help='Add Powerline Glyphs (https://github.com/ryanoasis/powerline-extra-symbols)', default=False)
+parser.add_argument('--careful', dest='careful', action='store_true', help='Do not overwrite existing glyphs if detected', default=False)
+parser.add_argument('-out', '--outputdir', type=str, nargs='?', dest='outputdir', help='The directory to output the patched font file to', default=".")
 args = parser.parse_args()
 
 #print "using fontforge package version: " + str(fontforge.__version__) + " " + str(fontforge.version())
 #print type(fontforge.version())
 #print int(fontforge.version())
 
-version = "0.5.0"
+version = "0.6.0"
 changelog = open("changelog.md", "r")
 minimumVersion = 20141231
 actualVersion = int(fontforge.version())
 #actualVersion = 20120731 # for testing invalid version
+# versions tested: 20150612, 20150824
 
 if actualVersion < minimumVersion:
     print "You seem to be using an unsupported (old) version of fontforge: " + str(actualVersion)
@@ -44,17 +50,13 @@ if actualVersion < minimumVersion:
     sys.exit(1)
 
 
-verboseAdditionalFontNameSuffix = " Plus Nerd File Types"
+verboseAdditionalFontNameSuffix = " Nerd Font"
 
 if args.windows:
     # attempt to shorten here on the additional name BEFORE trimming later
-    additionalFontNameSuffix = " PNFT"
+    additionalFontNameSuffix = " NF"
 else:
     additionalFontNameSuffix = verboseAdditionalFontNameSuffix
-
-if args.single:
-    additionalFontNameSuffix += " Mono"
-    verboseAdditionalFontNameSuffix += " Mono"
 
 if args.fontawesome:
     additionalFontNameSuffix += " Plus Font Awesome"
@@ -68,13 +70,24 @@ if args.pomicons:
     additionalFontNameSuffix += " Plus Pomicons"
     verboseAdditionalFontNameSuffix += " Plus Pomicons"
 
+# if all source glyphs included simplify the name
+if args.fontawesome and args.octicons and args.pomicons and args.powerlineextra:
+    additionalFontNameSuffix = " Nerd Font Complete"
+    verboseAdditionalFontNameSuffix = " Nerd Font Complete"
+
+# add mono signifier to end of name
+if args.single:
+    additionalFontNameSuffix += " Mono"
+    verboseAdditionalFontNameSuffix += " Mono"
+
 
 sourceFont = fontforge.open(args.font)
 
 fontname, style = re.match("^([^-]*)(?:(-.*))?$", sourceFont.fontname).groups()
 familyname = sourceFont.familyname
 # fullname (filename) can always use long/verbose font name, even in windows
-fullname = sourceFont.fullname
+fullname = sourceFont.fullname + verboseAdditionalFontNameSuffix
+fontname = fontname + additionalFontNameSuffix.replace(" ", "")
 
 if args.windows:
     maxLength = 31
@@ -94,8 +107,24 @@ def replace_all(text, dic):
         text = text.replace(i, j)
     return text
 
+
+def make_sure_path_exists(path):
+    try:
+        os.makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raisee
+
+make_sure_path_exists(args.outputdir)
+
+# comply with SIL Open Font License (OFL)
+reservedFontNameReplacements = { 'source': 'sauce', 'Source': 'Sauce', 'hermit': 'hurmit', 'Hermit': 'Hurmit', 'fira': 'fura', 'Fira': 'Fura', 'hack': 'knack', 'Hack': 'Knack' }
+
 projectInfo = "Patched with 'Nerd Fonts Patcher' (https://github.com/ryanoasis/nerd-fonts)"
 
+sourceFont.familyname = replace_all(familyname, reservedFontNameReplacements)
+sourceFont.fullname = replace_all(fullname, reservedFontNameReplacements)
+sourceFont.fontname = replace_all(fontname, reservedFontNameReplacements)
 sourceFont.appendSFNTName('English (US)', 'Preferred Family', sourceFont.familyname)
 sourceFont.appendSFNTName('English (US)', 'Compatible Full', sourceFont.fullname)
 sourceFont.comment = projectInfo
@@ -114,10 +143,12 @@ sourceFont_em_original = sourceFont.em
 
 symbols = fontforge.open("glyph-source-fonts/original-source.otf")
 powerlineSymbols = fontforge.open("glyph-source-fonts/PowerlineSymbols.otf")
+powerlineExtraSymbols = fontforge.open("glyph-source-fonts/PowerlineExtraSymbols.otf")
 symbolsDevicons = fontforge.open("glyph-source-fonts/devicons.ttf")
 
 symbols.em = sourceFont.em
 symbolsDevicons.em = sourceFont.em
+# powerlineExtraSymbols.em = sourceFont.em
 
 if args.fontawesome:
     fontawesome = fontforge.open("glyph-source-fonts/FontAwesome.otf")
@@ -149,7 +180,16 @@ symbolsPowerlineRange1End = 0xE0A2
 symbolsPowerlineRange2Start = 0xE0B0
 symbolsPowerlineRange2End = 0xE0B3
 
-symbolsOriginalRangeStart = 0xE4FE
+symbolsPowerlineExtraRange1Start = 0xE0A3
+symbolsPowerlineExtraRange1End = 0xE0A3
+
+symbolsPowerlineExtraRange2Start = 0xE0B4
+symbolsPowerlineExtraRange2End = 0xE0C8
+
+symbolsPowerlineExtraRange3Start = 0xE0CC
+symbolsPowerlineExtraRange3End = 0xE0D4
+
+symbolsOriginalRangeStart = 0xE4FA
 symbolsOriginalRangeEnd = 0xE52A
 
 symbolsDeviconsRangeStart = 0xE600
@@ -165,13 +205,7 @@ symbolsOcticonsRangeEnd = 0xF0DB
 sourceFontPomiconsStart = 0xE000
 sourceFontPomiconsEnd = 0xE00A
 
-#symbolsPowerlineRange1Start = 0xE0A0
-#symbolsPowerlineRange1End = 0xE0A2
-
-#symbolsPowerlineRange2Start = 0xE0B0
-#symbolsPowerlineRange2End = 0xE0B3
-
-sourceFontOriginalStart = 0xE5FE
+sourceFontOriginalStart = 0xE5FA
 sourceFontOriginalEnd = 0xE62A
 
 sourceFontDeviconsStart = 0xE700
@@ -264,66 +298,46 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
 
     for sym_glyph in symbolFont.selection.byGlyphs:
             #sym_attr = SYM_ATTR[sym_glyph.unicode]
-            if args.quiet == False:
-                print "updating glyph: " + str(sym_glyph)
+            glyphName = sym_glyph.glyphname
 
             if exactEncoding:
                 # use the exact same hex values for the source font as for the symbol font
                 currentSourceFontGlyph = sym_glyph.encoding
+                copiedToSlot = str(sym_glyph.unicode)
             else:
                 # use source font defined hex values based on passed in start and end
                 # convince that this string really is a hex:
                 currentSourceFontGlyph = int("0x" + sourceFontList[sourceFontCounter], 16)
+                copiedToSlot = sourceFontList[sourceFontCounter]
+
+            if args.quiet == False:
+                print "updating glyph: " + str(sym_glyph) + " " + str(sym_glyph.glyphname) + " putting at: " + str(copiedToSlot)
 
             # Prepare symbol glyph dimensions
             sym_dim = get_dim(sym_glyph)
-
-            if sourceFontStart == sourceFontPomiconsStart:
-              x_ratio = 1.1
-              y_ratio = 1.1
-              x_diff = 0
-              y_diff = -100
-            elif sourceFontStart in [symbolsPowerlineRange1Start, symbolsPowerlineRange2Start]:
-              x_ratio = 0.96
-              y_ratio = 0.88
-              x_diff = 0
-              y_diff = -40
-            elif sourceFontStart == sourceFontOriginalStart:
-              x_ratio = 0.9
-              y_ratio = 0.9
-              x_diff = 50
-              y_diff = -50
-            elif sourceFontStart == sourceFontDeviconsStart:
-              x_ratio = 1.0
-              y_ratio = 1.0
-              x_diff = -150
-              y_diff = -150
-            elif sourceFontStart == sourceFontFontAwesomeStart:
-              x_ratio = 0.95
-              y_ratio = 0.95
-              x_diff = 0
-              y_diff = -60
-            elif sourceFontStart == sourceFontOcticonsStart:
-              x_ratio = 1.0
-              y_ratio = 1.0
-              x_diff = 0
-              y_diff = -55
-            else:
-              print '{0:X}'.format(sourceFontStart)
-
-            scale = psMat.scale(x_ratio, y_ratio)
-            translate = psMat.translate(x_diff, y_diff)
-            transform = psMat.compose(scale, translate)
 
             # Select and copy symbol from its encoding point
             symbolFont.selection.select(sym_glyph.encoding)
             symbolFont.copy()
 
-            # Select and paste symbol to its unicode code point
-            sourceFont.selection.select(currentSourceFontGlyph)
-            sourceFont.paste()
+            # check it
+            if args.careful:
 
-            sourceFont.transform(transform)
+                if copiedToSlot.startswith("uni"):
+                    copiedToSlot = copiedToSlot[3:]
+
+                codepoint = int("0x" + copiedToSlot, 16)
+                try:
+                    sourceFont[codepoint]
+                except TypeError:
+                    # nothing there go ahead and paste at this codepoint
+                    sourceFont.selection.select(currentSourceFontGlyph)
+                    sourceFont.paste()
+            else:
+                sourceFont.selection.select(currentSourceFontGlyph)
+                sourceFont.paste()
+
+            sourceFont[currentSourceFontGlyph].glyphname = glyphName
 
             if args.single:
                 # Now that we have copy/pasted the glyph, it's time to scale and move it
@@ -404,9 +418,13 @@ copy_glyphs(sourceFont, sourceFontOriginalStart, sourceFontOriginalEnd, symbols,
 copy_glyphs(sourceFont, sourceFontDeviconsStart, sourceFontDeviconsEnd, symbolsDevicons, symbolsDeviconsRangeStart, symbolsDeviconsRangeEnd)
 
 if args.powerline:
-    copy_glyphs(sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End, powerlineSymbols, symbolsPowerlineRange1Start, symbolsPowerlineRange1End)
-    copy_glyphs(sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End, powerlineSymbols, symbolsPowerlineRange2Start, symbolsPowerlineRange2End)
+    copy_glyphs(sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End, sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End)
+    copy_glyphs(sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End, sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End)
 
+if args.powerlineextra:
+    copy_glyphs(sourceFont, symbolsPowerlineExtraRange1Start, symbolsPowerlineExtraRange1End, powerlineExtraSymbols, symbolsPowerlineExtraRange1Start, symbolsPowerlineExtraRange1End, True)
+    copy_glyphs(sourceFont, symbolsPowerlineExtraRange2Start, symbolsPowerlineExtraRange2End, powerlineExtraSymbols, symbolsPowerlineExtraRange2Start, symbolsPowerlineExtraRange2End, True)
+    copy_glyphs(sourceFont, symbolsPowerlineExtraRange3Start, symbolsPowerlineExtraRange3End, powerlineExtraSymbols, symbolsPowerlineExtraRange3Start, symbolsPowerlineExtraRange3End, True)
 
 if args.fontawesome:
     copy_glyphs(sourceFont, sourceFontFontAwesomeStart, sourceFontFontAwesomeEnd, fontawesome, symbolsFontAwesomeRangeStart, symbolsFontAwesomeRangeEnd, True)
@@ -419,12 +437,9 @@ if args.pomicons:
 
 extension = os.path.splitext(sourceFont.path)[1]
 
-# @todo later add option to generate the sfd?
-#sourceFont.save(sourceFont.fullname + ".sfd")
-
 # the `PfEd-comments` flag is required for Fontforge to save
 # '.comment' and '.fontlog'.
-sourceFont.generate(sourceFont.fullname + extension, flags=('PfEd-comments',))
+sourceFont.generate(args.outputdir + "/" + sourceFont.fullname + extension, flags=('opentype', 'PfEd-comments'))
 
 print "Generated"
 print sourceFont.fullname
