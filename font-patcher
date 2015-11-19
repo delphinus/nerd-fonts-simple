@@ -86,8 +86,7 @@ sourceFont = fontforge.open(args.font)
 fontname, style = re.match("^([^-]*)(?:(-.*))?$", sourceFont.fontname).groups()
 familyname = sourceFont.familyname
 # fullname (filename) can always use long/verbose font name, even in windows
-fullname = sourceFont.fullname + verboseAdditionalFontNameSuffix
-fontname = fontname + additionalFontNameSuffix.replace(" ", "")
+fullname = sourceFont.fullname
 
 if args.windows:
     maxLength = 31
@@ -122,9 +121,6 @@ reservedFontNameReplacements = { 'source': 'sauce', 'Source': 'Sauce', 'hermit':
 
 projectInfo = "Patched with 'Nerd Fonts Patcher' (https://github.com/ryanoasis/nerd-fonts)"
 
-sourceFont.familyname = replace_all(familyname, reservedFontNameReplacements)
-sourceFont.fullname = replace_all(fullname, reservedFontNameReplacements)
-sourceFont.fontname = replace_all(fontname, reservedFontNameReplacements)
 sourceFont.appendSFNTName('English (US)', 'Preferred Family', sourceFont.familyname)
 sourceFont.appendSFNTName('English (US)', 'Compatible Full', sourceFont.fullname)
 sourceFont.comment = projectInfo
@@ -296,6 +292,49 @@ def copy_glyphs(sourceFont, sourceFontStart, sourceFontEnd, symbolFont, symbolFo
     symbolFont.selection.select(("ranges","unicode"),symbolFontStart,symbolFontEnd)
     sourceFont.selection.select(("ranges","unicode"),sourceFontStart,sourceFontEnd)
 
+    if sourceFontStart == sourceFontPomiconsStart:
+      x_ratio = 1.1
+      y_ratio = 1.1
+      x_diff = 0
+      y_diff = -100
+    elif sourceFontStart in [symbolsPowerlineRange1Start, symbolsPowerlineRange2Start]:
+      x_ratio = 0.96
+      y_ratio = 0.88
+      x_diff = 0
+      y_diff = -40
+    elif sourceFontStart in [symbolsPowerlineExtraRange1Start, symbolsPowerlineExtraRange2Start, symbolsPowerlineExtraRange3Start]:
+      x_ratio = 0.4
+      y_ratio = 0.4
+      x_diff = 0
+      y_diff = 40
+    elif sourceFontStart == sourceFontOriginalStart:
+      x_ratio = 0.9
+      y_ratio = 0.9
+      x_diff = 50
+      y_diff = -50
+    elif sourceFontStart == sourceFontDeviconsStart:
+      x_ratio = 1.0
+      y_ratio = 1.0
+      x_diff = -150
+      y_diff = -150
+    elif sourceFontStart == sourceFontFontAwesomeStart:
+      x_ratio = 0.95
+      y_ratio = 0.95
+      x_diff = 0
+      y_diff = -60
+    elif sourceFontStart == sourceFontOcticonsStart:
+      x_ratio = 1.0
+      y_ratio = 1.0
+      x_diff = 0
+      y_diff = -55
+    else:
+      print '{0:X}'.format(sourceFontStart)
+
+    scale = psMat.scale(x_ratio, y_ratio)
+    translate = psMat.translate(x_diff, y_diff)
+    transform = psMat.compose(scale, translate)
+    symbolFont.transform(transform)
+
     for sym_glyph in symbolFont.selection.byGlyphs:
             #sym_attr = SYM_ATTR[sym_glyph.unicode]
             glyphName = sym_glyph.glyphname
@@ -418,8 +457,8 @@ copy_glyphs(sourceFont, sourceFontOriginalStart, sourceFontOriginalEnd, symbols,
 copy_glyphs(sourceFont, sourceFontDeviconsStart, sourceFontDeviconsEnd, symbolsDevicons, symbolsDeviconsRangeStart, symbolsDeviconsRangeEnd)
 
 if args.powerline:
-    copy_glyphs(sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End, sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End)
-    copy_glyphs(sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End, sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End)
+    copy_glyphs(sourceFont, symbolsPowerlineRange1Start, symbolsPowerlineRange1End, powerlineSymbols, symbolsPowerlineRange1Start, symbolsPowerlineRange1End)
+    copy_glyphs(sourceFont, symbolsPowerlineRange2Start, symbolsPowerlineRange2End, powerlineSymbols, symbolsPowerlineRange2Start, symbolsPowerlineRange2End)
 
 if args.powerlineextra:
     copy_glyphs(sourceFont, symbolsPowerlineExtraRange1Start, symbolsPowerlineExtraRange1End, powerlineExtraSymbols, symbolsPowerlineExtraRange1Start, symbolsPowerlineExtraRange1End, True)
